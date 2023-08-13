@@ -1,0 +1,156 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+
+df = pd.read_csv("profiles.csv")
+#print(df.head())
+#print(df.last_online.head())
+#print(df.columns)
+#print("nnumber of categories:",df.sign.nunique())
+#print("categories:", df.sign.unique())
+#print('religion',df.sign.unique())
+df['signsCleaned'] = df.sign.str.split().str.get(0)
+#print("nnumber of categories:",df.signsCleaned.nunique())
+#print("categories:", df.signsCleaned.unique())
+#print(df.religion.head())
+print(df.religion.unique())
+df.signsCleaned.value_counts()
+df['religionCleaned'] = df.religion.str.split().str.get(0)
+
+print(df.head)
+cols = ['body_type', 'diet', 'orientation', 'pets', 'religionCleaned',
+       'sex', 'job', 'signsCleaned']
+df = df[cols].dropna()
+#print(df.head)
+for col in cols[:-1]:
+    df = pd.get_dummies(df, columns=[col], prefix = [col])
+#print(df.head())   
+
+df.signsCleaned.value_counts()
+col_length = len(df.columns)
+
+#Y is the target column, X has the rest
+X = df.iloc[:, 1:col_length]
+y = df.iloc[:, 0:1]
+val_size = 0.25
+
+#Split the data into chunks
+from sklearn.model_selection import train_test_split 
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42)
+
+
+y_train = y_train.to_numpy().ravel()
+y_test = y_test.to_numpy().ravel()
+y_val = y_val.to_numpy().ravel()
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
+
+# Define a grid of hyperparameters for logistic regression
+param_grid = {
+    'penalty': ['l1', 'l2'],
+    'C': [0.0001,0.001,0.01, 1.0, 10.0]
+}
+
+# Create a logistic regression model
+lr = LogisticRegression(solver='liblinear')
+
+# Perform grid search with cross-validation
+grid = GridSearchCV(lr, param_grid, cv=5)
+grid.fit(X_train, y_train)
+
+# Predict on train and test data
+y_pred_train = grid.predict(X_train)
+y_pred_test = grid.predict(X_test)
+y_pred_val = grid.predict(X_val)
+# Calculate train and test MSE
+
+
+
+# Print the best hyperparameters
+print("Best hyperparameters FORL:", grid.best_params_)
+print("best Score",grid.best_score_)
+print(accuracy_score(y_test,y_pred_test))
+print(accuracy_score(y_train,y_pred_train))
+print(accuracy_score(y_val,y_pred_val))
+
+# Define the hyperparameter grid to search over
+param_grid = {
+   'max_depth': [3, 5, 10, None],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4],
+    'max_features': [None, 'sqrt', 'log2']
+}
+
+# Create a Decision Tree Classifier object
+clf = DecisionTreeClassifier(random_state=42)
+
+# Create a GridSearchCV object to find the best hyperparameters
+grid_search = GridSearchCV(clf, param_grid, cv=5)
+# Fit the GridSearchCV object to the data
+grid_search.fit(X_train, y_train)
+best_decision_param=grid_search.best_estimator_
+y_pred_test_decision_param = best_decision_param.predict(X_test)
+y_pred_val_decision_param = best_decision_param.predict(X_val)
+y_pred_train_decision_param = best_decision_param.predict(X_train)
+# Print the best hyperparameters and their corresponding score
+print("Best Hyperparameters:", grid_search.best_params_)
+print("Best Score:", grid_search.best_score_)
+print(accuracy_score(y_test,y_pred_test_decision_param))
+print(accuracy_score(y_train,y_pred_train_decision_param))
+print(accuracy_score(y_val,y_pred_val_decision_param))
+
+cm = confusion_matrix(y_val, y_pred_val_decision_param)
+
+# Plot the confusion matrix as a heatmap
+plt.figure(figsize=(13, 7))
+ax = plt.subplot()
+sns.heatmap(cm, annot=True, ax=ax, fmt="d")
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix - decision tree with hyperparamaeter')
+plt.show()
+
+knn = KNeighborsClassifier()
+
+# define parameter grid to search
+param_grid = {
+   'n_neighbors': [3, 5, 7, 9],
+    'weights': ['uniform', 'distance'],
+    'p': [1, 2]}
+grid_search = GridSearchCV(knn, param_grid=param_grid, cv=5)
+grid_search.fit(X_train, y_train)
+
+# print best hyperparameters
+print("Best Hyperparameters:", grid_search.best_params_)
+best_knn = grid_search.best_estimator_
+y_pred_train_knn = best_knn.predict(X_train)
+y_pred_test_knn =  best_knn.predict(X_test)
+y_pred_val_knn = best_knn.predict(X_val)
+print("acc_test_knn",accuracy_score(y_test,y_pred_test_knn))
+print("acc_train_knn",accuracy_score(y_train,y_pred_train_knn))
+print("acc_val_knn",accuracy_score(y_val,y_pred_val_knn))
+print("best Score",grid_search.best_score_)
+
+
+
+cm = confusion_matrix(y_val, y_pred_val_knn)
+# Plot the confusion matrix as a heatmap
+plt.figure(figsize=(13, 7))
+ax = plt.subplot()
+sns.heatmap(cm, annot=True, ax=ax, fmt="d")
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix - KNN Model')
+plt.show()
+
